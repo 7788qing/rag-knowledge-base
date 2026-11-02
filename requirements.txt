@@ -1,0 +1,25 @@
+# ===== 步骤1-2（当前）只装这些就够，轻量 =====
+pymupdf              # PDF 解析（import fitz）
+python-docx          # Word 解析
+markdown             # Markdown 处理
+pydantic-settings    # .env 配置管理
+loguru               # 结构化日志
+pytest               # 单元测试
+
+# ===== 步骤3-5 再装（重依赖，含 torch 约 2GB）=====
+# chromadb             # 向量库
+# sentence-transformers  # BGE embedding
+# torch
+# openai>=1.30         # DashScope OpenAI 兼容客户端
+# langchain             # 只用 TextSplitter / PromptTemplate 薄封装
+# langchain-community
+
+# ===== 步骤6-8 再装 =====
+# fastapi
+# uvicorn[standard]
+# python-multipart     # 文件上传
+# streamlit
+
+# ===== 阶段2 再装 =====
+# rank_bm25            # BM25 关键词检索
+# jieba                # 中文分词
