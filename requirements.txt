@@ -6,13 +6,14 @@ pydantic-settings    # .env 配置管理
 loguru               # 结构化日志
 pytest               # 单元测试
 
-# ===== 步骤3-5 再装（重依赖，含 torch 约 2GB）=====
+# ===== 步骤3 分块：只需要这一个轻量包 =====
+langchain-text-splitters   # 递归分块器（只装 splitter，不装整个 langchain）
+
+# ===== 步骤4-5 再装（重依赖，含 torch 约 2GB）=====
 # chromadb             # 向量库
 # sentence-transformers  # BGE embedding
 # torch
 # openai>=1.30         # DashScope OpenAI 兼容客户端
-# langchain             # 只用 TextSplitter / PromptTemplate 薄封装
-# langchain-community
 
 # ===== 步骤6-8 再装 =====
 # fastapi
