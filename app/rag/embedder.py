@@ -5,9 +5,9 @@
   意思越相近的文字，向量挨得越近——「检索」的本质就是找最近的向量。
 
 三种实现，接口完全一样（可插拔设计，面试可讲）：
-  1. DashScopeEmbedder：调通义的 embedding API（默认，零显卡要求、免下载 2GB torch）
+  1. OpenAICompatEmbedder：调任意「OpenAI 兼容」的向量服务（默认硅基流动 bge-m3，免费）
   2. FakeEmbedder：测试专用，按文本哈希生成假向量，不联网、不花钱
-  3. 本地 BGE（sentence-transformers）：留了位置，等 torch 适配当前 Python 再启用
+  3. 本地 BGE（sentence-transformers）：留了位置，以后有显卡/带宽再启用
 """
 from __future__ import annotations
 
@@ -51,23 +51,26 @@ class FakeEmbedder:
         return self._one(text)
 
 
-class DashScopeEmbedder:
-    """生产实现：调 DashScope 的 embedding API（OpenAI 兼容格式）。
+class OpenAICompatEmbedder:
+    """生产实现：调任意兼容 OpenAI 格式的向量服务。
 
-    为什么默认走 API 而不是本地 BGE：
-      本地 BGE 需要 torch（约 2GB，且 Python 3.15 暂无适配版本，装了就报错）；
-      API 有免费额度、速度快、代码一样简单。接口已留好，随时可切回本地。
+    默认用硅基流动的 BAAI/bge-m3（免费、中文好、1024 维）。
+    想换别家？只改 .env 里的 EMBEDDING_BASE_URL / EMBEDDING_MODEL，代码不动。
+
+    为什么不在本地跑 BGE：
+      本地跑要 torch（约 2GB）+ 模型权重（几百 MB~1GB），CPU 编码也慢；
+      API 免费、快、零安装。接口已留好，将来切本地只加一个类。
     """
 
-    BATCH_SIZE = 10  # DashScope 单次最多 10 条，超了要分批送
+    BATCH_SIZE = 10  # 一次最多送 10 条，超了分批（各家上限不同，10 是安全值）
 
     def __init__(self) -> None:
         # 延迟导入：没装 openai 包时，其他代码和测试照常能跑
         from openai import OpenAI
 
         self._client = OpenAI(
-            api_key=settings.dashscope_api_key,
-            base_url=settings.llm_base_url,  # DashScope 的 OpenAI 兼容地址
+            api_key=settings.embedding_api_key,
+            base_url=settings.embedding_base_url,
         )
 
     def _embed(self, texts: list[str]) -> list[list[float]]:
@@ -88,8 +91,8 @@ class DashScopeEmbedder:
 def build_embedder(provider: str | None = None) -> Embedder:
     """小工厂：按配置返回对应的 embedding 实现，上层代码不用关心细节。"""
     provider = provider or settings.embedding_provider
-    if provider == "dashscope":
-        return DashScopeEmbedder()
+    if provider in ("openai_compat", "dashscope"):
+        return OpenAICompatEmbedder()
     if provider == "fake":
         return FakeEmbedder()
     raise ValueError(f"未知的 embedding provider: {provider}")

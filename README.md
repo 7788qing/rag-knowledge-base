@@ -4,24 +4,29 @@
 
 ## 技术栈
 
-FastAPI · LangChain · PyMuPDF / python-docx · Chroma · BGE-Large-ZH · 通义千问（DashScope）· Streamlit · Docker
+FastAPI · LangChain · PyMuPDF / python-docx · Chroma · bge-m3（硅基流动）· DeepSeek · Streamlit · Docker
+
+> 两个模型都走「OpenAI 兼容」接口，换平台只改 `.env` 三行，代码不动。
 
 ## 快速开始
 
 ```bash
-# 1. 虚拟环境
-python -m venv .venv
+# 1. 虚拟环境（本项目用 Python 3.13；3.15 装不上 numpy/chromadb）
+py -3.13 -m venv .venv
 .venv\Scripts\activate        # Windows
 # source .venv/bin/activate    # macOS / Linux
 
-# 2. 安装依赖（按阶段解锁，见 requirements.txt 注释）
-pip install -r requirements.txt
+# 2. 安装依赖（pip 走清华镜像，官方源会很慢）
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 3. 配置
-copy .env.example .env         # 填入 DASHSCOPE_API_KEY
+copy .env.example .env         # 填 LLM_API_KEY（DeepSeek）+ EMBEDDING_API_KEY（硅基流动）
 
 # 4. 测试
 python -m pytest
+
+# 5. 跑一次真实问答（会用到云端额度）
+python scripts/demo_ask.py
 ```
 
 ## 项目阶段

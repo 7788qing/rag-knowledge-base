@@ -2,7 +2,7 @@
 
 设计要点：
   1. 「改参数不改代码」——调 chunk_size / top_k 只动 .env，重启即生效；
-  2. 密钥（DASHSCOPE_API_KEY）永远不写死在代码里，.gitignore 已排除 .env；
+  2. 密钥（LLM_API_KEY / EMBEDDING_API_KEY）永远不写死在代码里，.gitignore 已排除 .env；
   3. pydantic-settings 会做类型校验：.env 里写 CHUNK_SIZE=abc 会直接报错，
      而不是等到运行时才发现是字符串。
 """
@@ -15,15 +15,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
-    # ---- LLM：通义千问（DashScope 的 OpenAI 兼容模式）----
-    dashscope_api_key: str = ""  # 必须在 .env 中填写
-    llm_model: str = "qwen-plus"
-    llm_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    # ---- 对话模型（负责回答问题的那个）----
+    # 只要求「兼容 OpenAI 格式」：DeepSeek / 通义 / 智谱 / OpenAI / Ollama 都能用。
+    # 换平台只改这三行，代码一个字不动。
+    llm_api_key: str = ""                                  # 在 .env 里填，绝不写进代码
+    llm_base_url: str = "https://api.deepseek.com/v1"      # DeepSeek 官方地址
+    llm_model: str = "deepseek-flash"                      # 若报「模型不存在」，改试 deepseek-chat
 
-    # ---- Embedding ----
-    embedding_provider: str = "dashscope"  # dashscope=云端API（默认，零显卡要求）；local=本地BGE（需 torch）
-    embedding_model: str = "text-embedding-v4"  # 云端模型名；切 local 模式时改回 "BAAI/bge-large-zh-v1.5"
-    embedding_device: str = "cpu"  # 仅 local 模式用；有 NVIDIA 显卡可改 "cuda"
+    # ---- 向量模型（把文字变成数字的那个）----
+    # 注意：DeepSeek 没有 embedding 接口，所以要单独配一家。
+    # 默认硅基流动的 bge-m3：免费、中文效果好、OpenAI 兼容。
+    embedding_provider: str = "openai_compat"              # openai_compat=任意兼容服务；fake=测试用
+    embedding_api_key: str = ""
+    embedding_base_url: str = "https://api.siliconflow.cn/v1"
+    embedding_model: str = "BAAI/bge-m3"                   # 1024 维；模型名必须带 BAAI/ 前缀
+    embedding_device: str = "cpu"                          # 本地模式预留，云端用不到
 
     # ---- 分块 ----
     chunk_size: int = 500  # 字符数；BGE-Large 最佳输入约 512 token

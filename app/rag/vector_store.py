@@ -75,12 +75,33 @@ class VectorStore:
         self.client.delete_collection(name)
         self.collection = self.client.get_or_create_collection(name=name, metadata=_COSINE)
 
+    def delete_document(self, doc_name: str) -> None:
+        """按文件名删掉它的全部块（where 过滤）。"""
+        self.collection.delete(where={"doc_name": doc_name})
+
+    def list_documents(self) -> list[dict]:
+        """把库里的块按文件名聚合，返回 [{doc_name, chunks, pages}, ...]。"""
+        data = self.collection.get(include=["metadatas"])
+        buckets: dict[str, dict] = {}
+        for meta in data["metadatas"]:
+            name = meta["doc_name"]
+            item = buckets.setdefault(name, {"doc_name": name, "chunks": 0, "pages": set()})
+            item["chunks"] += 1
+            item["pages"].add(meta["page_no"])
+        return [
+            {"doc_name": v["doc_name"], "chunks": v["chunks"], "pages": len(v["pages"])}
+            for v in buckets.values()
+        ]
+
 
 def ingest_file(path: str | Path, embedder: Embedder, store: VectorStore) -> int:
     """一条龙：解析 → 分块 → 向量化 → 入库，返回入库条数。
 
+    重复上传同一个文件时，先删旧的再写新的，避免 id 冲突。
     步骤 6 的「上传文档」接口直接调这一个函数就够了。
     """
+    doc_name = Path(path).name
+    store.delete_document(doc_name)  # 幂等：同名文档覆盖更新
     chunks = chunk_file(path)
     embeddings = embedder.embed_documents([c.text for c in chunks])
     return store.add_chunks(chunks, embeddings)

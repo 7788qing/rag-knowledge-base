@@ -18,10 +18,13 @@ openai>=1.30         # DashScope 的 OpenAI 兼容客户端（Embedding 和 LLM 
 # sentence-transformers  # 本地 BGE
 # torch
 
-# ===== 步骤6-8 再装 =====
-# fastapi
-# uvicorn[standard]
-# python-multipart     # 文件上传
+# ===== 步骤6 接口层（当前解锁）=====
+fastapi                # Web 框架
+uvicorn[standard]      # 开发服务器
+python-multipart       # 文件上传（表单解析）
+httpx                  # TestClient 依赖，接口测试用
+
+# ===== 步骤7 前端再装 =====
 # streamlit
 
 # ===== 阶段2 再装 =====
