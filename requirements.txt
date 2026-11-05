@@ -24,8 +24,8 @@ uvicorn[standard]      # 开发服务器
 python-multipart       # 文件上传（表单解析）
 httpx                  # TestClient 依赖，接口测试用
 
-# ===== 步骤7 前端再装 =====
-# streamlit
+# ===== 步骤7 前端（当前解锁）=====
+streamlit              # 快速做网页界面，不用写 HTML/CSS
 
 # ===== 阶段2 再装 =====
 # rank_bm25            # BM25 关键词检索
