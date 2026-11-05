@@ -21,8 +21,9 @@ class Settings(BaseSettings):
     llm_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 
     # ---- Embedding ----
-    embedding_model: str = "BAAI/bge-large-zh-v1.5"
-    embedding_device: str = "cpu"  # 有 NVIDIA 显卡可改 "cuda"
+    embedding_provider: str = "dashscope"  # dashscope=云端API（默认，零显卡要求）；local=本地BGE（需 torch）
+    embedding_model: str = "text-embedding-v4"  # 云端模型名；切 local 模式时改回 "BAAI/bge-large-zh-v1.5"
+    embedding_device: str = "cpu"  # 仅 local 模式用；有 NVIDIA 显卡可改 "cuda"
 
     # ---- 分块 ----
     chunk_size: int = 500  # 字符数；BGE-Large 最佳输入约 512 token

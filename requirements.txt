@@ -1,5 +1,6 @@
-# ===== 步骤1-2（当前）只装这些就够，轻量 =====
-pymupdf              # PDF 解析（import fitz）
+# ===== 步骤1-2 只装这些就够，轻量 =====
+# 注意：pymupdf 必须锁在 1.x。2.x 在 Windows 上缺 mupdf 原生模块，import 直接报错。
+pymupdf>=1.24,<2      # PDF 解析（import fitz）
 python-docx          # Word 解析
 markdown             # Markdown 处理
 pydantic-settings    # .env 配置管理
@@ -9,11 +10,13 @@ pytest               # 单元测试
 # ===== 步骤3 分块：只需要这一个轻量包 =====
 langchain-text-splitters   # 递归分块器（只装 splitter，不装整个 langchain）
 
-# ===== 步骤4-5 再装（重依赖，含 torch 约 2GB）=====
-# chromadb             # 向量库
-# sentence-transformers  # BGE embedding
+# ===== 步骤4 入库（当前解锁）=====
+chromadb             # 向量库：本地持久化，pip 即装
+openai>=1.30         # DashScope 的 OpenAI 兼容客户端（Embedding 和 LLM 都走它）
+
+# ===== 可选：本地 BGE embedding（需要 torch 约 2GB；Python 3.15 暂无适配版本，暂不装）=====
+# sentence-transformers  # 本地 BGE
 # torch
-# openai>=1.30         # DashScope OpenAI 兼容客户端
 
 # ===== 步骤6-8 再装 =====
 # fastapi
