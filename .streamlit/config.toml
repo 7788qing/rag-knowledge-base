@@ -1,13 +1,39 @@
-# Streamlit 主题配置：改这里就能换整体配色，不用碰代码
+# 暖米白 + 雾霾蓝 + 浅蜜桃：柔和低饱和的商务轻量化主题。
+# 组件级细节（毛玻璃、气泡、动效）在 app/ui/app.py 的样式层里。
+
 [theme]
-primaryColor = "#2563EB"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F5F7FB"
-textColor = "#111827"
-font = "sans serif"
+base = "light"
+primaryColor = "#94B8E8"
+backgroundColor = "#FAF7F4"
+secondaryBackgroundColor = "#F4EFE9"
+textColor = "#4A4442"
+linkColor = "#6E93C8"
+borderColor = "#E7DFD8"
+codeBackgroundColor = "#F4EFE9"
+baseRadius = "14px"
+buttonRadius = "14px"
+showWidgetBorder = true
+showSidebarBorder = false
+font = "sans-serif"
+codeFont = "Cascadia Mono"
+baseFontSize = 14
+baseFontWeight = 400
+paddingTop = "1rem"
+paddingBottom = "1rem"
+
+[theme.sidebar]
+backgroundColor = "#FAF7F4"
+secondaryBackgroundColor = "#F4EFE9"
+textColor = "#4A4442"
+borderColor = "#E7DFD8"
 
 [server]
 maxUploadSize = 50
+headless = true
 
 [browser]
 gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"
+showSidebarNavigation = false
