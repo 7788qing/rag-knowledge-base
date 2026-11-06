@@ -1,9 +1,7 @@
-"""Streamlit 前端：两个页面（知识问答 / 文档管理）。
+"""Streamlit 前端：知识问答 + 文档管理。
 
-它自己不碰数据库、不碰模型，只做一件事：**调 FastAPI 接口**。
-好处：前后端分离，以后换成 Vue/React 也不用动后端。
-
-启动（先确保后端已在跑）：
+它自己不碰数据库、不碰模型，只做一件事：调 FastAPI 接口。
+启动：
     终端1: python -m uvicorn app.main:app --reload
     终端2: streamlit run app/ui/app.py
 """
@@ -12,14 +10,91 @@ import os
 import httpx
 import streamlit as st
 
-# 后端地址：默认本机 8000，部署到服务器时可用环境变量覆盖
 API = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
-TIMEOUT = 180.0  # 上传大文件、等模型回答，都要留足时间
+TIMEOUT = 180.0
 
 st.set_page_config(page_title="私有知识库问答", page_icon="📚", layout="wide")
 
+# ---------------------------------------------------------------- 外观
 
-# ---------------------------------------------------------------- 薄薄的 HTTP 封装
+CUSTOM_CSS = """
+<style>
+.block-container { max-width: 1080px; padding-top: 2rem; padding-bottom: 3rem; }
+
+.hero {
+  background: linear-gradient(135deg, #2563EB 0%, #6D28D9 100%);
+  border-radius: 18px;
+  padding: 26px 30px;
+  margin-bottom: 22px;
+  color: #FFFFFF;
+}
+.hero-title { font-size: 24px; font-weight: 600; margin: 0 0 6px; letter-spacing: .3px; }
+.hero-sub { font-size: 13.5px; margin: 0; color: rgba(255,255,255,.86); }
+.hero-chips { margin-top: 14px; }
+.hero-chip {
+  display: inline-block; font-size: 12px; padding: 4px 11px; margin-right: 8px;
+  border-radius: 999px; background: rgba(255,255,255,.18); color: #fff;
+}
+
+[data-testid="stChatMessage"] {
+  background: #FFFFFF;
+  border: 1px solid #E6ECF5;
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(16,24,40,.05);
+}
+
+.cite {
+  display: inline-block;
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #DBEAFE;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  margin: 6px 6px 0 0;
+}
+
+[data-testid="stMetric"] {
+  background: #FFFFFF;
+  border: 1px solid #E6ECF5;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+[data-testid="stFileUploaderDropzone"], [data-testid="stFileUploader"] section {
+  border: 1.5px dashed #C9D8EC;
+  border-radius: 14px;
+  background: #FAFCFF;
+}
+
+.stButton > button {
+  border-radius: 10px;
+  border: 1px solid #D9E2F0;
+  font-weight: 500;
+}
+.stButton > button[kind="primary"] {
+  background: linear-gradient(135deg, #2563EB, #4F46E5);
+  border: none;
+  color: #fff;
+}
+
+.doc-card {
+  background: #FFFFFF;
+  border: 1px solid #E6ECF5;
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 10px;
+}
+.doc-name { font-weight: 500; color: #111827; font-size: 14.5px; }
+.doc-meta { color: #6B7280; font-size: 12.5px; margin-top: 2px; }
+</style>
+"""
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------------- HTTP 封装
 
 
 def api_get(path: str):
@@ -35,7 +110,7 @@ def api_delete(path: str):
 
 
 def fetch_health() -> dict | None:
-    """拿服务状态；连不上就返回 None，不抛异常（前端不应该崩）。"""
+    """拿服务状态；连不上返回 None，不让前端崩。"""
     try:
         resp = api_get("/health")
         return resp.json() if resp.status_code == 200 else None
@@ -43,15 +118,42 @@ def fetch_health() -> dict | None:
         return None
 
 
-# ---------------------------------------------------------------- 侧边栏：状态
+def render_citations(citations: list[dict]) -> None:
+    """引用做成小标签，比一行纯文字好看也好读。"""
+    html = "".join(
+        f'<span class="cite">[{c["index"]}] {c["doc_name"]} · 第{c["page_no"]}页</span>'
+        for c in citations
+    )
+    if html:
+        st.markdown(html, unsafe_allow_html=True)
 
+
+# ---------------------------------------------------------------- 顶部标题
+
+health = fetch_health()
+chunk_total = health["chunks"] if health else 0
+model_name = health["llm_model"] if health else "未连接"
+
+st.markdown(
+    f"""
+    <div class="hero">
+      <p class="hero-title">私有知识库 · 智能问答</p>
+      <p class="hero-sub">上传企业文档，用自然语言提问，答案附带原文出处</p>
+      <div class="hero-chips">
+        <span class="hero-chip">已入库 {chunk_total} 块</span>
+        <span class="hero-chip">模型 {model_name}</span>
+        <span class="hero-chip">检索 + 引用溯源</span>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# ---------------------------------------------------------------- 侧边栏
 
 with st.sidebar:
-    st.title("📚 知识库问答")
-    st.caption("上传文档 → 提问 → 带来源回答")
-    st.divider()
-
-    health = fetch_health()
+    st.markdown("### 服务状态")
     if health:
         st.success("后端已连接")
         st.metric("已入库块数", health["chunks"])
@@ -67,28 +169,28 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
+    st.divider()
+    st.caption("阶段 1 基础版 · FastAPI + Chroma + DeepSeek")
+
 
 # ---------------------------------------------------------------- 两个页签
 
-tab_ask, tab_docs = st.tabs(["💬 知识问答", "📁 文档管理"])
+tab_ask, tab_docs = st.tabs(["知识问答", "文档管理"])
 
-
-# ---------------------------------------------------------------- 页签一：问答
 
 with tab_ask:
-    st.subheader("问点什么")
-
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # 把历史消息重绘一遍（Streamlit 每次交互都会重跑整个脚本）
+    if not st.session_state.messages:
+        st.info("试试问：年假有多少天？ / 迟到怎么算？ / 报销要在几天内提交？")
+
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
-            for cite in msg.get("citations", []):
-                st.caption(f"[{cite['index']}] {cite['doc_name']} · 第{cite['page_no']}页")
+            render_citations(msg.get("citations", []))
 
-    question = st.chat_input("例如：迟到怎么算？")
+    question = st.chat_input("输入你的问题…")
 
     if question:
         st.session_state.messages.append({"role": "user", "content": question})
@@ -106,8 +208,7 @@ with tab_ask:
             if resp is not None and resp.status_code == 200:
                 data = resp.json()
                 st.markdown(data["answer"])
-                for cite in data["citations"]:
-                    st.caption(f"[{cite['index']}] {cite['doc_name']} · 第{cite['page_no']}页")
+                render_citations(data["citations"])
                 st.caption(f"耗时 {data['elapsed_ms']} ms")
 
                 st.session_state.messages.append(
@@ -121,10 +222,8 @@ with tab_ask:
                 st.error(f"接口返回 {resp.status_code}：{resp.text}")
 
 
-# ---------------------------------------------------------------- 页签二：文档管理
-
 with tab_docs:
-    st.subheader("上传文档")
+    st.markdown("#### 上传文档")
     st.caption("支持 PDF / Word(.docx) / Markdown / TXT，单次一个文件")
 
     uploaded = st.file_uploader(
@@ -154,7 +253,7 @@ with tab_docs:
             st.error(f"入库失败（{resp.status_code}）：{resp.text}")
 
     st.divider()
-    st.subheader("已有文档")
+    st.markdown("#### 已有文档")
 
     try:
         docs = api_get("/api/documents").json() if health else []
@@ -164,17 +263,16 @@ with tab_docs:
     if not docs:
         st.info("知识库还是空的，先上传一份文档。")
     else:
-        head = st.columns([5, 2, 2, 2])
-        head[0].markdown("**文件名**")
-        head[1].markdown("**块数**")
-        head[2].markdown("**页数**")
-        head[3].markdown("**操作**")
-
         for doc in docs:
-            c1, c2, c3, c4 = st.columns([5, 2, 2, 2])
-            c1.write(doc["doc_name"])
-            c2.write(str(doc["chunks"]))
-            c3.write(str(doc["pages"]))
-            if c4.button("删除", key=f"del::{doc['doc_name']}"):
-                api_delete(f"/api/documents/{doc['doc_name']}")
-                st.rerun()
+            c1, c2 = st.columns([8, 1])
+            with c1:
+                st.markdown(
+                    f'<div class="doc-card"><div class="doc-name">{doc["doc_name"]}</div>'
+                    f'<div class="doc-meta">{doc["chunks"]} 块 · {doc["pages"]} 页</div></div>',
+                    unsafe_allow_html=True,
+                )
+            with c2:
+                st.write("")
+                if st.button("删除", key=f"del::{doc['doc_name']}"):
+                    api_delete(f"/api/documents/{doc['doc_name']}")
+                    st.rerun()
