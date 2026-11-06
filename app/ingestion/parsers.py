@@ -67,7 +67,10 @@ def parse_document(path: str | Path) -> ParsedDoc:
     # 扫描件保护：PDF 扫描件每页都有坐标图形，但 get_text 返回空字符串。
     # 提前拦截，避免后面入库一堆空 chunk。
     if not any(p.text.strip() for p in doc.pages):
-        raise ParseError("未解析到任何文本，疑似扫描版 PDF（OCR 支持将在阶段3提供）")
+        raise ParseError(
+            "未能从文件中解析出任何文本。可能原因：文件为空，或为扫描版 PDF"
+            "（图片型 PDF 无文本层，OCR 支持计划在阶段 3 提供）。"
+        )
     return doc
 
 

@@ -97,11 +97,12 @@ class VectorStore:
 def ingest_file(path: str | Path, embedder: Embedder, store: VectorStore) -> int:
     """一条龙：解析 → 分块 → 向量化 → 入库，返回入库条数。
 
-    重复上传同一个文件时，先删旧的再写新的，避免 id 冲突。
-    步骤 6 的「上传文档」接口直接调这一个函数就够了。
+    顺序很重要：先把「新数据」完整准备好，再动旧数据。
+    这样解析或向量化失败时旧文档仍然保留，不会出现
+    「传了一个坏文件，原文档反而消失了」的数据丢失事故。
     """
+    chunks = chunk_file(path)                                        # 1. 解析 + 分块
+    embeddings = embedder.embed_documents([c.text for c in chunks])  # 2. 向量化
     doc_name = Path(path).name
-    store.delete_document(doc_name)  # 幂等：同名文档覆盖更新
-    chunks = chunk_file(path)
-    embeddings = embedder.embed_documents([c.text for c in chunks])
+    store.delete_document(doc_name)                                  # 3. 新数据就绪，才删旧
     return store.add_chunks(chunks, embeddings)

@@ -2,8 +2,9 @@
 import pytest
 
 from app.ingestion.chunker import Chunk
+from app.ingestion.parsers import ParseError
 from app.rag.embedder import FakeEmbedder
-from app.rag.vector_store import VectorStore
+from app.rag.vector_store import VectorStore, ingest_file
 
 
 def _chunk(i: int, text: str, doc: str = "测试文档.md", page: int = 1) -> Chunk:
@@ -78,3 +79,28 @@ def test_clear_empties_store(tmp_path):
 
     store.clear()
     assert store.count() == 0
+
+
+def test_ingest_failure_keeps_old_document(tmp_path):
+    """回归测试：重传同名文件但解析失败时，旧文档必须保留。
+
+    曾经的写法是「先删旧 → 再解析」，一旦新文件是坏的，
+    旧文档就白丢了 —— 这是数据丢失级别的缺陷。
+    """
+    store = VectorStore(persist_dir=tmp_path)
+    embedder = FakeEmbedder()
+
+    doc = tmp_path / "制度.md"
+    doc.write_text("# 制度\n\n正常内容，用于验证覆盖更新。\n", encoding="utf-8")
+    assert ingest_file(doc, embedder, store) > 0
+    before = store.count()
+    assert before > 0
+
+    # 同名文件改成空内容 → 解析阶段抛 ParseError
+    doc.write_text("", encoding="utf-8")
+    with pytest.raises(ParseError):
+        ingest_file(doc, embedder, store)
+
+    # 旧数据应原封不动
+    assert store.count() == before
+    assert store.list_documents()[0]["doc_name"] == "制度.md"
